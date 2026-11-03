@@ -33,6 +33,10 @@ npm run dev
 npm run build
 ```
 
+### Audit policy
+
+All dependencies are dev-only; nothing from `node_modules` ships in `main.js` (`obsidian` is external). Gate on `npm audit --omit=dev`, which must stay clean. Findings in dev tooling (lint, types, build) get fixed by normal upgrades, not `overrides` or `npm audit fix --force`.
+
 ## Linting
 
 - ESLint is preconfigured with `eslint-plugin-obsidianmd` for Obsidian-specific rules.

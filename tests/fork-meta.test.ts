@@ -28,6 +28,13 @@ test('not a fork without repo, path and a valid blob', () => {
 	assert.equal(readForkMeta({ ...forkMetaProps(meta), fork_repo: 'nope' }), null);
 });
 
+test('fork_path: leading slash stripped, . and .. segments rejected', () => {
+	assert.equal(readForkMeta({ ...forkMetaProps(meta), fork_path: '/wiki/x.md' })?.path, 'wiki/x.md');
+	for (const p of ['../x.md', 'wiki/../x.md', './x.md']) {
+		assert.equal(readForkMeta({ ...forkMetaProps(meta), fork_path: p }), null, p);
+	}
+});
+
 test('repo canonicalised, bad commit dropped, unrelated keys ignored', () => {
 	const m = readForkMeta({ ...forkMetaProps(meta), fork_repo: 'git@github.com:a/b.git', fork_commit: 'x', tags: ['t'] });
 	assert.deepEqual(m, { ...meta, commit: null });

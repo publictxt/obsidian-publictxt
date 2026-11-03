@@ -1,92 +1,62 @@
-# Obsidian Sample Plugin
+# PublicTxt for Obsidian
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Follow other people's PublicTxt repos, see what changed since you last looked, and fork the
+pages you want into your vault. Each fork records where it came from in its front matter.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+> **Status: early development.** Nothing is released. The data model and the git layer are
+> built and tested. The settings tab, check view and fork command are in progress.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
+## Requirements
 
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and outputs a Notice on click.
-- Registers a global interval which logs 'setInterval' to the console.
+- Obsidian desktop. The plugin uses the git CLI, so it doesn't run on mobile.
+- [git](https://git-scm.com/) installed. If Obsidian can't find it on your `PATH` (common on
+  macOS when Obsidian is started from Finder), set **Git executable** in the plugin settings.
 
-## First time developing plugins?
+## How it works
 
-Quick starting guide for new plugin devs:
+- **Sources** are remote repos you follow, optionally narrowed to some folders.
+- Each source is kept as a bare partial clone in your vault's `remotes/` folder. File contents
+  are fetched only when needed. Consider adding `remotes/` to your vault's `.gitignore` and
+  excluding it from Obsidian Sync.
+- A **fork** is a note copied from a source, with `fork_repo`, `fork_path`, `fork_blob` and
+  related keys in its front matter. Those keys are how the plugin tells when the original
+  has changed.
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `src/main.ts` to `main.js`.
-- Make changes to `src/main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Settings
 
-## Releasing new releases
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| **Fork folder** | vault root | Where forked notes go |
+| **Remotes folder** | `remotes` | Where the git clones live |
+| **Git executable** | `git` | Path to git |
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Privacy
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+The plugin talks to the network only through git, and only for the repos you follow. It sends
+no telemetry and uses your own git credentials (SSH keys, credential helpers).
 
-## Adding your plugin to the community plugin list
+## Development
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+Requires Node.js 22.18 or later. Tests run TypeScript directly under `node --test`.
 
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint
-
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-	"fundingUrl": "https://buymeacoffee.com"
-}
+```bash
+npm install
+npm run dev     # build in watch mode
+npm run build   # typecheck + production build
+npm test        # unit tests, plus git tests against temporary repos
+npm run lint
 ```
 
-If you have multiple URLs, you can also do:
+To try it, copy `main.js`, `manifest.json` and `styles.css` into
+`<vault>/.obsidian/plugins/publictxt/`, then enable **PublicTxt** in
+**Settings → Community plugins**.
 
-```json
-{
-	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com",
-		"GitHub Sponsor": "https://github.com/sponsors",
-		"Patreon": "https://www.patreon.com/"
-	}
-}
-```
+Design docs:
 
-## API Documentation
+- [docs/intent.md](docs/intent.md): why the plugin exists and the decisions behind it
+- [docs/spec.md](docs/spec.md): what it does
+- [docs/naming.md](docs/naming.md): names used in code, docs and UI
 
-See https://docs.obsidian.md
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).

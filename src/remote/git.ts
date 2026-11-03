@@ -2,7 +2,7 @@
 // (docs/spec.md → Remote host). Pure: the process runner is injected, so
 // this module has no Node imports; src/remote/git-process.ts is the real one.
 
-import { isSha } from '../sources/schema.ts';
+import { isSha } from '../util/validate.ts';
 import { RemoteError, type Change, type ChangeStatus, type Head, type RemoteHost, type Tree } from './host.ts';
 
 export interface GitResult {

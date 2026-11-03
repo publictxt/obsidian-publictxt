@@ -2,6 +2,7 @@
 // Pure: no Obsidian runtime imports, so tests run under plain Node.
 
 import { canonicalRepoUrl } from './repo-url.ts';
+import { isRecord, isSha, repoPath, str } from '../util/validate.ts';
 
 export const DATA_VERSION = 1;
 
@@ -48,27 +49,6 @@ export const DEFAULT_DATA: PublicTxtData = {
 	sources: [],
 	state: {},
 };
-
-const SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
-
-export function isSha(v: unknown): v is string {
-	return typeof v === 'string' && SHA.test(v);
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
-function str(v: unknown): string | null {
-	return typeof v === 'string' && v.trim() ? v.trim() : null;
-}
-
-/** Repo-relative path: no leading `/`, no `.`/`..` segments. */
-function repoPath(v: unknown): string | null {
-	const s = str(v)?.replace(/^\/+/, '');
-	if (!s) return null;
-	return s.split('/').some((p) => p === '.' || p === '..') ? null : s;
-}
 
 /** Vault-relative folder without surrounding slashes, or `null`. */
 function vaultFolder(v: unknown): string | null {

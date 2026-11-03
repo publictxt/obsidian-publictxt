@@ -1,7 +1,7 @@
 // A fork's provenance in front matter (docs/spec.md → Fork provenance). Pure.
 
 import { canonicalRepoUrl } from './repo-url.ts';
-import { isSha } from './schema.ts';
+import { isSha, repoPath, str } from '../util/validate.ts';
 
 export interface ForkMeta {
 	repo: string;
@@ -23,15 +23,13 @@ export const FORK_KEYS = [
 	'fork_date',
 ] as const;
 
-function str(v: unknown): string | null {
-	return typeof v === 'string' && v.trim() ? v.trim() : null;
-}
+export type ForkKey = (typeof FORK_KEYS)[number];
 
 /** A note's provenance, or `null` if it isn't a valid fork. */
 export function readForkMeta(fm: Record<string, unknown> | null | undefined): ForkMeta | null {
 	if (!fm) return null;
 	const repo = typeof fm.fork_repo === 'string' ? canonicalRepoUrl(fm.fork_repo) : null;
-	const path = str(fm.fork_path)?.replace(/^\/+/, '') ?? null;
+	const path = repoPath(fm.fork_path);
 	if (!repo || !path || !isSha(fm.fork_blob)) return null;
 	return {
 		repo,
@@ -44,15 +42,20 @@ export function readForkMeta(fm: Record<string, unknown> | null | undefined): Fo
 	};
 }
 
-/** The keys to merge into a note's front matter. `null` fields are omitted. */
+/** The keys to merge into a note's front matter, in `FORK_KEYS` order. `null` fields are omitted. */
 export function forkMetaProps(m: ForkMeta): Record<string, string> {
-	const out: Record<string, string> = {
+	const values: Record<ForkKey, string | null> = {
 		fork_repo: m.repo,
 		fork_path: m.path,
+		fork_branch: m.branch,
+		fork_commit: m.commit,
+		fork_blob: m.blob,
+		fork_date: m.date,
 	};
-	if (m.branch) out.fork_branch = m.branch;
-	if (m.commit) out.fork_commit = m.commit;
-	out.fork_blob = m.blob;
-	if (m.date) out.fork_date = m.date;
+	const out: Record<string, string> = {};
+	for (const key of FORK_KEYS) {
+		const v = values[key];
+		if (v) out[key] = v;
+	}
 	return out;
 }
