@@ -3,12 +3,12 @@
 Names used in code, docs and UI. Nothing is released, so all of it can still change; plugin id
 and command ids freeze at the first release.
 
-## Plugin identity (proposed, not yet applied)
+## Plugin identity
 
 | Thing | Name | Notes |
 |---|---|---|
 | Repo | `publictxt/obsidian-publictxt` | |
-| Plugin `id` | `publictxt` | `manifest.json` still has the sample's `sample-plugin`; change it in the first runnable slice |
+| Plugin `id` | `publictxt` | Freezes at the first release |
 | Display `name` | PublicTxt | |
 
 ## Vocabulary

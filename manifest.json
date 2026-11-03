@@ -1,11 +1,9 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "publictxt",
+	"name": "PublicTxt",
 	"version": "1.0.0",
 	"minAppVersion": "1.0.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Follow PublicTxt repos, see what changed, and fork pages into your vault with their provenance.",
+	"author": "Jaysen Naidoo",
 	"isDesktopOnly": true
 }

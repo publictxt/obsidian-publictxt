@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-publictxt",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Obsidian plugin: follow PublicTxt repos and fork their pages into your vault.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
