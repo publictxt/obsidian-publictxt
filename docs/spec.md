@@ -71,6 +71,20 @@ Per source, against the tracked branch's head:
 Acknowledging moves `seenCommit` and `watched` forward. Forks are acknowledged only by updating
 them (later slice), since their state is their front matter.
 
+## Remote host
+
+`RemoteHost` (`src/remote/host.ts`) is all the check and fork steps use. GitHub's adapter makes
+these REST calls (`api.github.com`, optional bearer token):
+
+| Method | Calls | Notes |
+|---|---|---|
+| `head` | `GET /repos/:r` (only when `branch` is null), `GET /repos/:r/branches/:b` | Commit and tree SHA |
+| `tree` | `GET /repos/:r/git/trees/:tree?recursive=1` | Files only; GitHub may truncate very large trees |
+| `changes` | `GET /repos/:r/compare/:base...:head` | `null` on 404 or when status isn't `ahead`/`identical`; 300 files or more is flagged truncated |
+| `blob` | `GET /repos/:r/git/blobs/:sha` | base64 → UTF-8 |
+
+A check costs two calls per source (three without a branch), plus one compare.
+
 ## Fork
 
 User picks a file from a check (or the source's tree) and a target folder (source `folder`, else
