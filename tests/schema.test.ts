@@ -38,6 +38,10 @@ test('state: kept for followed sources only, invalid values dropped', () => {
 	});
 });
 
-test('forkFolder trimmed of slashes', () => {
-	assert.equal(normalizeData({ forkFolder: '/Forks/' }).forkFolder, 'Forks');
+test('folders trimmed of slashes; remotesFolder and gitPath never empty', () => {
+	const d = normalizeData({ forkFolder: '/Forks/', remotesFolder: '/', gitPath: ' /usr/bin/git ' });
+	assert.equal(d.forkFolder, 'Forks');
+	assert.equal(d.remotesFolder, 'remotes');
+	assert.equal(d.gitPath, '/usr/bin/git');
+	assert.equal(normalizeData({ remotesFolder: 'x/clones/' }).remotesFolder, 'x/clones');
 });

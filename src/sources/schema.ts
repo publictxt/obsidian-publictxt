@@ -31,6 +31,10 @@ export interface PublicTxtData {
 	version: number;
 	/** Default vault folder for forks; `''`: the vault root. */
 	forkFolder: string;
+	/** Vault folder holding the bare clones (docs/spec.md → Remote host). */
+	remotesFolder: string;
+	/** The git executable; `git`: whatever is on PATH. */
+	gitPath: string;
 	sources: Source[];
 	/** Keyed by `Source.url`. */
 	state: Record<string, SourceState>;
@@ -39,6 +43,8 @@ export interface PublicTxtData {
 export const DEFAULT_DATA: PublicTxtData = {
 	version: DATA_VERSION,
 	forkFolder: '',
+	remotesFolder: 'remotes',
+	gitPath: 'git',
 	sources: [],
 	state: {},
 };
@@ -64,6 +70,11 @@ function repoPath(v: unknown): string | null {
 	return s.split('/').some((p) => p === '.' || p === '..') ? null : s;
 }
 
+/** Vault-relative folder without surrounding slashes, or `null`. */
+function vaultFolder(v: unknown): string | null {
+	return str(v)?.replace(/^\/+|\/+$/g, '') ?? null;
+}
+
 function uniq(xs: string[]): string[] {
 	return [...new Set(xs)];
 }
@@ -82,13 +93,13 @@ export function normalizeSource(v: unknown): Source | null {
 	if (!isRecord(v)) return null;
 	const url = typeof v.url === 'string' ? canonicalRepoUrl(v.url) : null;
 	if (!url) return null;
-	const folder = str(v.folder);
+	const folder = vaultFolder(v.folder);
 	return {
 		url,
 		branch: str(v.branch),
 		include: paths(v.include, true),
 		watch: paths(v.watch, false),
-		folder: folder ? folder.replace(/^\/+|\/+$/g, '') || null : null,
+		folder: folder || null,
 	};
 }
 
@@ -130,6 +141,8 @@ export function normalizeData(v: unknown): PublicTxtData {
 		}
 	}
 
-	const forkFolder = str(r.forkFolder)?.replace(/^\/+|\/+$/g, '') ?? '';
-	return { version: DATA_VERSION, forkFolder, sources, state };
+	const forkFolder = vaultFolder(r.forkFolder) ?? DEFAULT_DATA.forkFolder;
+	const remotesFolder = vaultFolder(r.remotesFolder) || DEFAULT_DATA.remotesFolder;
+	const gitPath = str(r.gitPath) ?? DEFAULT_DATA.gitPath;
+	return { version: DATA_VERSION, forkFolder, remotesFolder, gitPath, sources, state };
 }
