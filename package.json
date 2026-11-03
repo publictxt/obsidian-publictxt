@@ -24,10 +24,5 @@
 		"obsidian": "^1.14.4",
 		"typescript": "^5.8.3",
 		"typescript-eslint": "^8.72.1"
-	},
-	"overrides": {
-		"minimatch": "^11.0.1",
-		"brace-expansion": "^5.0.12",
-		"moment": "^2.31.0"
 	}
 }
