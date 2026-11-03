@@ -30,6 +30,15 @@ export default defineConfig(
 	},
 	...obsidianmd.configs.recommended,
 	{
+		// The plugin is desktop-only and runs git (docs/intent.md); this one
+		// module holds the Node imports, so the rest of src/ stays portable
+		// for the mobile phase.
+		files: ['src/remote/git-process.ts'],
+		rules: {
+			'obsidianmd/no-nodejs-modules': 'off',
+		},
+	},
+	{
 		// Tests run under Node, not in Obsidian; node:test's promises are
 		// handled by the runner.
 		files: ['tests/**/*.ts'],
