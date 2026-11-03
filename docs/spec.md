@@ -4,8 +4,13 @@ What the plugin does. Why in `intent.md`, names in `naming.md`. Draft: nothing r
 
 ## Data
 
-`data.json` holds `{ version, forkFolder, sources, state }`. `forkFolder` is the default vault
-folder for forks (`''`: the vault root).
+`data.json` holds `{ version, forkFolder, remotesFolder, gitPath, sources, state }`.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `forkFolder` | `''` | Default vault folder for forks (`''`: the vault root) |
+| `remotesFolder` | `remotes` | Vault folder holding the clones; never empty |
+| `gitPath` | `git` | The git executable. Set it when Obsidian doesn't see the shell's PATH (macOS apps started from Finder) |
 
 ## Source
 
@@ -60,10 +65,10 @@ when reading. The list of forks is derived by scanning the vault (`intent.md`).
 
 Per source, against the tracked branch's head:
 
-1. Fetch the head commit and the recursive tree (`path → blob SHA`).
+1. Fetch, then read the head commit and the recursive tree (`path → blob SHA`).
 2. **What's new**: files changed between `seenCommit` and head, within `include`. If
-   `seenCommit` is null, missing upstream (force-push) or the diff is truncated: list every file
-   in `include` as new, and say why.
+   `seenCommit` is null, or `changes` is `null` (history rewritten): list every file in
+   `include` as new, and say why.
 3. **Watched**: each `watch` path whose blob differs from `watched[path]`, or that is gone.
 4. **Forks**: each fork of this source whose `fork_path` blob at head differs from `fork_blob`,
    or that is gone.
@@ -73,17 +78,21 @@ them (later slice), since their state is their front matter.
 
 ## Remote host
 
-`RemoteHost` (`src/remote/host.ts`) is all the check and fork steps use. GitHub's adapter makes
-these REST calls (`api.github.com`, optional bearer token):
+`RemoteHost` (`src/remote/host.ts`) is all the check and fork steps use. `GitHost`
+(`src/remote/git.ts`) implements it with the git CLI, one bare partial clone per source at
+`<remotesFolder>/<host>/<owner>/<repo>.git`. Commands run without a shell, with
+`GIT_TERMINAL_PROMPT=0`, one at a time per clone.
 
-| Method | Calls | Notes |
-|---|---|---|
-| `head` | `GET /repos/:r` (only when `branch` is null), `GET /repos/:r/branches/:b` | Commit and tree SHA |
-| `tree` | `GET /repos/:r/git/trees/:tree?recursive=1` | Files only; GitHub may truncate very large trees |
-| `changes` | `GET /repos/:r/compare/:base...:head` | `null` on 404 or when status isn't `ahead`/`identical`; 300 files or more is flagged truncated |
-| `blob` | `GET /repos/:r/git/blobs/:sha` | base64 → UTF-8 |
+| Method | git |
+|---|---|
+| (first use) | `clone --bare --filter=blob:none`, then `remote.origin.fetch = +refs/heads/*:refs/heads/*` |
+| `head` | `fetch --prune`; `ls-remote --symref origin HEAD` when `branch` is null; `rev-parse` the commit and tree |
+| `tree` | `ls-tree -r -z`, blobs only (submodules skipped) |
+| `changes` | `null` if `base` is unknown or not an ancestor (`cat-file -e`, `merge-base --is-ancestor`); else `diff --name-status -z -M` |
+| `blob` | `cat-file blob`; a partial clone fetches it on demand |
 
-A check costs two calls per source (three without a branch), plus one compare.
+Errors are a `RemoteError` by `kind`: `no-git` (git can't start), `git` (a command failed),
+`not-found` (branch or default branch missing), `bad-input` (not a canonical URL or SHA).
 
 ## Fork
 
@@ -94,8 +103,10 @@ provenance keys. A name clash asks; it never overwrites.
 ## Build order
 
 1. Schema: data types, `normalizeData`, canonical URL, fork provenance read/write. Pure, tested.
-2. GitHub adapter: head, tree, compare, blob, via `requestUrl`. Fixture-tested.
+2. Git host: head, tree, changes, blob over the git CLI. Tested against real git and
+   temporary repos.
 3. Sources settings: add, edit, remove.
 4. Check view: what's new, watched, forks.
 5. Fork command.
-6. Later: update a fork (three-way merge on `fork_blob`), propose upstream, auth, tag filters.
+6. Later: update a fork (`git merge-file` on `fork_blob`), propose upstream, tag filters.
+7. Mobile phase (`intent.md` → Phases).
