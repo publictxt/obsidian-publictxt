@@ -66,8 +66,10 @@ writes into the vault, only when the user asks.
 
 1. **Desktop** (now): git CLI, as above.
 2. **Mobile** (later): a second `RemoteHost` over a host's HTTPS API, no git. A GitHub REST
-   adapter was built and tested, then removed when desktop-only was chosen; it is in this repo's
-   history (`feat/github-adapter`, `src/remote/github.ts`) as the starting point. That phase
+   adapter was built and tested, then removed when desktop-only was chosen. It is parked at tag
+   `archive/github-adapter` as the starting point:
+   `git checkout archive/github-adapter -- src/remote/github.ts tests/github.test.ts`.
+   `RemoteHost` has changed since (`changes()` returns `Change[] | null`), so expect small fixes. That phase
    brings back the auth and rate-limit questions, and needs a merge that doesn't use git.
 
 ## Proposed changes to the publictext spec
