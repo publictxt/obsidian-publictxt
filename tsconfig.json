@@ -17,7 +17,8 @@
 			"ES2021",
 			"DOM"
 		],
-		"allowImportingTsExtensions": true
+		"allowImportingTsExtensions": true,
+		"erasableSyntaxOnly": true
 	},
 	"include": [
 		"src/**/*.ts",

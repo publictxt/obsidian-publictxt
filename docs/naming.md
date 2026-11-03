@@ -34,3 +34,7 @@ and command ids freeze at the first release.
 | `canonicalRepoUrl()` | v0 canonical repo URL, or `null` |
 | `normalizeData()` | Anything loaded → valid `PublicTxtData` |
 | `readForkMeta()` / `forkMetaProps()` | Front matter ↔ `ForkMeta` |
+| `RemoteHost` | What the plugin needs from a host: `head`, `tree`, `changes`, `blob` |
+| `GitHubHost` | The GitHub REST adapter. `hostFor()` picks the adapter for a repo URL |
+| `HttpGet` | One GET, injected: `requestUrl` in the plugin, fixtures in tests |
+| `RemoteError` | Host failure, by `kind`: `not-found`, `rate-limited`, `http`, `bad-response` |
