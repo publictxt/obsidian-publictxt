@@ -23,6 +23,8 @@ export const FORK_KEYS = [
 	'fork_date',
 ] as const;
 
+export type ForkKey = (typeof FORK_KEYS)[number];
+
 /** A note's provenance, or `null` if it isn't a valid fork. */
 export function readForkMeta(fm: Record<string, unknown> | null | undefined): ForkMeta | null {
 	if (!fm) return null;
@@ -40,15 +42,20 @@ export function readForkMeta(fm: Record<string, unknown> | null | undefined): Fo
 	};
 }
 
-/** The keys to merge into a note's front matter. `null` fields are omitted. */
+/** The keys to merge into a note's front matter, in `FORK_KEYS` order. `null` fields are omitted. */
 export function forkMetaProps(m: ForkMeta): Record<string, string> {
-	const out: Record<string, string> = {
+	const values: Record<ForkKey, string | null> = {
 		fork_repo: m.repo,
 		fork_path: m.path,
+		fork_branch: m.branch,
+		fork_commit: m.commit,
+		fork_blob: m.blob,
+		fork_date: m.date,
 	};
-	if (m.branch) out.fork_branch = m.branch;
-	if (m.commit) out.fork_commit = m.commit;
-	out.fork_blob = m.blob;
-	if (m.date) out.fork_date = m.date;
+	const out: Record<string, string> = {};
+	for (const key of FORK_KEYS) {
+		const v = values[key];
+		if (v) out[key] = v;
+	}
 	return out;
 }
