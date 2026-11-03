@@ -1,37 +1,41 @@
+// Settings tab for the top-level fields of data.json (docs/spec.md → Data).
+// Sources get their own UI later (build order step 3).
+
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import MyPlugin from './main';
+import type PublicTxtPlugin from './main.ts';
+import { DEFAULT_DATA, type PublicTxtData } from './sources/schema.ts';
 
-export interface MyPluginSettings {
-	mySetting: string;
-}
+type TextField = 'forkFolder' | 'remotesFolder' | 'gitPath';
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default',
-};
+export class PublicTxtSettingTab extends PluginSettingTab {
+	private readonly plugin: PublicTxtPlugin;
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: PublicTxtPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc("It's a secret")
-			.addText((text) =>
-				text
-					.setPlaceholder('Enter your secret')
-					.setValue(this.plugin.settings.mySetting)
+		this.text('forkFolder', 'Fork folder', 'Default vault folder for forked notes. Empty: the vault root.');
+		this.text('remotesFolder', 'Remotes folder', 'Vault folder holding the git clones of your sources.');
+		this.text('gitPath', 'Git executable', 'Path to git. Set it if Obsidian can\'t find git on your PATH.');
+	}
+
+	/** A text setting bound to one field. The input keeps what was typed; the saved value is normalized. */
+	private text(field: TextField, name: string, desc: string): void {
+		new Setting(this.containerEl)
+			.setName(name)
+			.setDesc(desc)
+			.addText((t) =>
+				t
+					.setPlaceholder(DEFAULT_DATA[field])
+					.setValue(this.plugin.data[field])
 					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
-						await this.plugin.saveSettings();
+						const next: PublicTxtData = { ...this.plugin.data, [field]: value };
+						await this.plugin.save(next);
 					}),
 			);
 	}
