@@ -1,7 +1,7 @@
 // A fork's provenance in front matter (docs/spec.md → Fork provenance). Pure.
 
 import { canonicalRepoUrl } from './repo-url.ts';
-import { isSha } from './schema.ts';
+import { isSha, str } from '../util/validate.ts';
 
 export interface ForkMeta {
 	repo: string;
@@ -22,10 +22,6 @@ export const FORK_KEYS = [
 	'fork_blob',
 	'fork_date',
 ] as const;
-
-function str(v: unknown): string | null {
-	return typeof v === 'string' && v.trim() ? v.trim() : null;
-}
 
 /** A note's provenance, or `null` if it isn't a valid fork. */
 export function readForkMeta(fm: Record<string, unknown> | null | undefined): ForkMeta | null {
