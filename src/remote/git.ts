@@ -1,0 +1,165 @@
+// RemoteHost over the git CLI, one bare partial clone per source
+// (docs/spec.md → Remote host). Pure: the process runner is injected, so
+// this module has no Node imports; src/remote/git-process.ts is the real one.
+
+import { isSha } from '../sources/schema.ts';
+import { RemoteError, type Change, type ChangeStatus, type Head, type RemoteHost, type Tree } from './host.ts';
+
+export interface GitResult {
+	code: number;
+	stdout: string;
+	stderr: string;
+}
+
+/** Runs `git <args>` in `cwd` (no shell). Rejects with `RemoteError('no-git')` if git can't start. */
+export type RunGit = (args: string[], cwd: string | null) => Promise<GitResult>;
+
+export interface GitHostOptions {
+	run: RunGit;
+	/** Absolute folder holding the clones: the vault's `remotes/` by default (docs/spec.md). */
+	cacheDir: string;
+	/** Joins path segments; `path.join` in the plugin. */
+	join: (...parts: string[]) => string;
+	/** Whether a path exists. */
+	exists: (path: string) => Promise<boolean>;
+	/** Repo URL → what git clones from. Identity in the plugin; tests map to local repos. */
+	remote?: (repo: string) => string;
+}
+
+const STATUS: Record<string, ChangeStatus> = {
+	A: 'added',
+	C: 'added',
+	M: 'modified',
+	T: 'modified',
+	D: 'removed',
+	R: 'renamed',
+};
+
+/** `https://host/owner/repo` → [host, owner, repo.git] under the cache folder. */
+export function cachePath(repo: string): string[] {
+	const m = /^https:\/\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(repo);
+	if (!m) throw new RemoteError('bad-input', `Not a canonical repo URL: ${repo}`);
+	return [m[1] ?? '', m[2] ?? '', `${m[3] ?? ''}.git`];
+}
+
+function sha(v: string, what: string): string {
+	if (isSha(v)) return v;
+	throw new RemoteError('bad-input', `Not a ${what} SHA`);
+}
+
+/** Parses `git diff --name-status -z` output. */
+export function parseNameStatus(out: string): Change[] {
+	const f = out.split('\0');
+	const changes: Change[] = [];
+	for (let i = 0; i < f.length; ) {
+		const code = f[i++] ?? '';
+		if (!code) continue;
+		const status = STATUS[code[0] ?? ''];
+		if (code[0] === 'R' || code[0] === 'C') {
+			const from = f[i++] ?? '';
+			const path = f[i++] ?? '';
+			if (status) changes.push({ path, status, from: status === 'renamed' ? from : null });
+		} else {
+			const path = f[i++] ?? '';
+			if (status) changes.push({ path, status, from: null });
+		}
+	}
+	return changes;
+}
+
+/** Parses `git ls-tree -r -z` output: blobs only (submodules skipped). */
+export function parseLsTree(out: string): Map<string, string> {
+	const files = new Map<string, string>();
+	for (const line of out.split('\0')) {
+		const tab = line.indexOf('\t');
+		if (tab < 0) continue;
+		const [, type, id] = line.slice(0, tab).split(' ');
+		if (type === 'blob' && id) files.set(line.slice(tab + 1), id);
+	}
+	return files;
+}
+
+export class GitHost implements RemoteHost {
+	private readonly o: GitHostOptions;
+	/** Per-clone queue: git takes locks, so commands on one clone run in turn. */
+	private readonly queues = new Map<string, Promise<unknown>>();
+
+	constructor(options: GitHostOptions) {
+		this.o = options;
+	}
+
+	private dir(repo: string): string {
+		return this.o.join(this.o.cacheDir, ...cachePath(repo));
+	}
+
+	private serial<T>(repo: string, job: () => Promise<T>): Promise<T> {
+		const prev = this.queues.get(repo) ?? Promise.resolve();
+		const next = prev.then(job, job);
+		this.queues.set(repo, next.catch(() => undefined));
+		return next;
+	}
+
+	private async git(args: string[], cwd: string | null, ok: number[] = [0]): Promise<GitResult> {
+		const r = await this.o.run(args, cwd);
+		if (!ok.includes(r.code)) {
+			throw new RemoteError('git', `git ${args[0] ?? ''} failed: ${r.stderr.trim() || `exit ${r.code}`}`);
+		}
+		return r;
+	}
+
+	private async ensureClone(repo: string): Promise<string> {
+		const dir = this.dir(repo);
+		if (await this.o.exists(dir)) return dir;
+		const remote = this.o.remote?.(repo) ?? repo;
+		await this.git(['clone', '--bare', '--filter=blob:none', '--quiet', '--', remote, dir], null);
+		// A bare clone has no fetch refspec; mirror branches so fetch keeps them current.
+		await this.git(['config', 'remote.origin.fetch', '+refs/heads/*:refs/heads/*'], dir);
+		return dir;
+	}
+
+	head(repo: string, branch: string | null): Promise<Head> {
+		return this.serial(repo, async () => {
+			const dir = await this.ensureClone(repo);
+			await this.git(['fetch', '--prune', '--quiet', 'origin'], dir);
+			let name = branch;
+			if (name === null) {
+				const out = (await this.git(['ls-remote', '--symref', 'origin', 'HEAD'], dir)).stdout;
+				name = /^ref: refs\/heads\/(\S+)\tHEAD$/m.exec(out)?.[1] ?? null;
+				if (!name) throw new RemoteError('not-found', `No default branch: ${repo}`);
+			}
+			const ref = `refs/heads/${name}`;
+			// Not --verify: it takes one name. A missing ref exits 128.
+			const r = await this.git(['rev-parse', `${ref}^{commit}`, `${ref}^{tree}`], dir, [0, 128]);
+			const [commit, tree] = r.stdout.trim().split('\n');
+			if (r.code !== 0 || !commit || !tree) throw new RemoteError('not-found', `No branch ${name}: ${repo}`);
+			return { branch: name, commit, tree };
+		});
+	}
+
+	tree(repo: string, tree: string): Promise<Tree> {
+		return this.serial(repo, async () => {
+			const out = await this.git(['ls-tree', '-r', '-z', sha(tree, 'tree')], this.dir(repo));
+			return { files: parseLsTree(out.stdout) };
+		});
+	}
+
+	changes(repo: string, base: string, head: string): Promise<Change[] | null> {
+		return this.serial(repo, async () => {
+			const dir = this.dir(repo);
+			const b = sha(base, 'commit');
+			const h = sha(head, 'commit');
+			// Unknown commit (e.g. gone after a force-push and prune), or not an ancestor: no diff.
+			if ((await this.git(['cat-file', '-e', `${b}^{commit}`], dir, [0, 1, 128])).code !== 0) return null;
+			if ((await this.git(['merge-base', '--is-ancestor', b, h], dir, [0, 1])).code !== 0) return null;
+			const out = await this.git(['diff', '--name-status', '-z', '-M', b, h], dir);
+			return parseNameStatus(out.stdout);
+		});
+	}
+
+	blob(repo: string, blob: string): Promise<string> {
+		return this.serial(repo, async () => {
+			// Partial clone: the blob is fetched on demand.
+			return (await this.git(['cat-file', 'blob', sha(blob, 'blob')], this.dir(repo))).stdout;
+		});
+	}
+}

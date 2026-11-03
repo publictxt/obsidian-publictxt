@@ -22,19 +22,20 @@ and command ids freeze at the first release.
 | check | One pass over the sources: what's new, watched, forks |
 | head | The tracked branch's latest commit |
 | blob | A file's git blob SHA |
+| clone | A source's bare partial clone under `remotesFolder` |
 
 ## Code identifiers
 
 | Name | What |
 |---|---|
-| `PublicTxtData` | Everything in `data.json`: `{ version, forkFolder, sources, state }` |
+| `PublicTxtData` | Everything in `data.json`: `{ version, forkFolder, remotesFolder, gitPath, sources, state }` |
 | `Source` | One followed repo (config) |
 | `SourceState` | Per-source cache |
 | `ForkMeta` | A fork's provenance, read from or written to front matter |
 | `canonicalRepoUrl()` | v0 canonical repo URL, or `null` |
 | `normalizeData()` | Anything loaded → valid `PublicTxtData` |
 | `readForkMeta()` / `forkMetaProps()` | Front matter ↔ `ForkMeta` |
-| `RemoteHost` | What the plugin needs from a host: `head`, `tree`, `changes`, `blob` |
-| `GitHubHost` | The GitHub REST adapter. `hostFor()` picks the adapter for a repo URL |
-| `HttpGet` | One GET, injected: `requestUrl` in the plugin, fixtures in tests |
-| `RemoteError` | Host failure, by `kind`: `not-found`, `rate-limited`, `http`, `bad-response` |
+| `RemoteHost` | What the plugin needs from a remote: `head`, `tree`, `changes`, `blob` |
+| `GitHost` | `RemoteHost` over the git CLI |
+| `RunGit` / `gitRunner()` | Runs one git command; the real one is in `git-process.ts`, the only Node module |
+| `RemoteError` | Remote failure, by `kind`: `no-git`, `git`, `not-found`, `bad-input` |
