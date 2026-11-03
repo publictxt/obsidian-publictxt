@@ -33,6 +33,13 @@ npm run dev
 npm run build
 ```
 
+### Dependency overrides (temporary, added 2026-11-03)
+
+`package.json` `overrides` forces `minimatch` ^11, `brace-expansion` ^5 and `moment` ^2.31. These are versions their parent packages didn't ask for. They were added with `npm audit fix` to clear audit findings in dev-only tooling; none of them ship in `main.js`. Tests, build and lint all worked with them on 2026-11-03.
+
+- **Risk:** a parent written for an older major can break quietly. Example: `eslint-plugin-json-schema-validator` calls `minimatch.default`, which minimatch 11 doesn't export. That rule is off in the obsidianmd config today, so nothing fails. If you enable it, it will crash.
+- **Remove them** once the parents (`eslint-plugin-obsidianmd` and its eslint 9 plugins, `obsidian` for `moment`) depend on fixed versions themselves. Check on each dependency update: delete the `overrides` block, run `npm install`, then `npm audit`. If audit is clean, or only reports dev-only findings you accept, keep the block removed. Then run `npm test`, `npm run build` and `npm run lint`.
+
 ## Linting
 
 - ESLint is preconfigured with `eslint-plugin-obsidianmd` for Obsidian-specific rules.
