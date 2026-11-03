@@ -1,7 +1,7 @@
 // A fork's provenance in front matter (docs/spec.md → Fork provenance). Pure.
 
 import { canonicalRepoUrl } from './repo-url.ts';
-import { isSha, str } from '../util/validate.ts';
+import { isSha, repoPath, str } from '../util/validate.ts';
 
 export interface ForkMeta {
 	repo: string;
@@ -27,7 +27,7 @@ export const FORK_KEYS = [
 export function readForkMeta(fm: Record<string, unknown> | null | undefined): ForkMeta | null {
 	if (!fm) return null;
 	const repo = typeof fm.fork_repo === 'string' ? canonicalRepoUrl(fm.fork_repo) : null;
-	const path = str(fm.fork_path)?.replace(/^\/+/, '') ?? null;
+	const path = repoPath(fm.fork_path);
 	if (!repo || !path || !isSha(fm.fork_blob)) return null;
 	return {
 		repo,
